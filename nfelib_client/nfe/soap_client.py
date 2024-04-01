@@ -86,7 +86,6 @@ class NfeSoapClient(SoapClient):
                 xServ=xServ,
                 versao=self.versao,
             ),
-            RetConsStatServ,
         )
 
     # NOTE in wmixvideo
@@ -100,7 +99,6 @@ class NfeSoapClient(SoapClient):
                 xServ=xServ,
                 chNFe=chave,
             ),
-            RetConsSitNfe,
         )
 
     # NOTE: I changed the signature from erpbrasil.edoc
@@ -120,7 +118,6 @@ class NfeSoapClient(SoapClient):
                 # XML parsing/serialization and possibly screwing the signature.
                 NFe=[Tnfe()],
             ),
-            RetEnviNfe,
             placeholder_exp="<NFe/>",
             placeholder_content="".join(nfes),
         )
@@ -144,7 +141,6 @@ class NfeSoapClient(SoapClient):
             #                infInut=InutNfe.InfInut(),  # placeholder for signed xml
             #                signature=None,
             #            ),
-            RetInutNfe,
             placeholder_exp="<inutNFe/>",
             placeholder_content=signed_xml,
         )
@@ -164,7 +160,6 @@ class NfeSoapClient(SoapClient):
                 tpAmb=self.ambiente,
                 nRec=numero,
             ),
-            RetConsReciNfe,
         )
 
     # NOTE bad name from erpbrasil.edoc
@@ -195,7 +190,6 @@ class NfeSoapClient(SoapClient):
                 idLote=numero_lote,
                 evento=[TeventoCancel()],  # placeholder
             ),
-            TretEnvEvento,
             placeholder_exp='<ns2:TEnvEvento versao="1.00"><evento/></ns2:TEnvEvento>',  # "<TEnvento/>",
             placeholder_content=signed_events_xml,
         )
