@@ -2,7 +2,7 @@ import time
 from datetime import date, datetime
 from os import environ
 
-from brazil_fiscal_client.soap_client import SoapClient
+from brazil_fiscal_client.fiscal_client import FiscalClient
 from lxml import etree
 from nfelib.nfe.bindings.v4_0.cons_reci_nfe_v4_00 import ConsReciNfe
 from nfelib.nfe.bindings.v4_0.cons_sit_nfe_v4_00 import ConsSitNfe
@@ -32,13 +32,14 @@ from nfelib_client.nfe.soap.nferetautorizacao4 import NfeRetAutorizacao4SoapNfeR
 from nfelib_client.nfe.soap.nfestatusservico4 import NfeStatusServico4SoapNfeStatusServicoNf
 from nfelib_client.nfe.soap.recepcaoevento4 import NfeRecepcaoEvento4SoapNfeRecepcaoEvento
 from nfelib_client.nfe.soap.nfeautorizacao4 import NfeAutorizacao4SoapNfeAutorizacaoLote
+# TODO nfedistribuicaodfe
 
 # NOTE about erpbrasil.edoc we emulate here: sometimes the erpbrasil.edoc API seems bad:
 # in general it forces coupling with the binding classes and coupling with the sign lib.
 # also takes 1 NFe, shouldn't it be a list??
 
 
-class NfeSoapClient(SoapClient):
+class NfeSoapClient(FiscalClient):
     """A façade for the NFe SOAP webserices.
     The API is the same as the erpbrasil.edoc package.
     """
@@ -46,12 +47,12 @@ class NfeSoapClient(SoapClient):
     def __init__(self, **kw):
         super().__init__(
             versao="4.00",
-            # response_bindings_packages=[nfe_v4, cancel_v1],
+            service="nfe",
             **kw,
         )
 
     @classmethod
-    def get_server(cls, service: str, cUF: str) -> str:
+    def _get_server(cls, service: str, uf: str) -> str:
         return "https://nfe-homologacao.svrs.rs.gov.br"  # TODO implement
 
     # TODO move to nfelib!!!
