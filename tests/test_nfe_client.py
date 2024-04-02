@@ -1,5 +1,7 @@
 import logging
+import io
 import os
+import time
 from os import environ
 from pathlib import Path
 from unittest import TestCase, mock
@@ -17,7 +19,7 @@ from xsdata.formats.dataclass.parsers import XmlParser
 from xsdata.formats.dataclass.serializers import XmlSerializer
 from xsdata.formats.dataclass.transports import DefaultTransport
 
-from nfelib_client.nfe.soap_client import NfeSoapClient
+from nfelib_client.nfe.soap_client import NfeClient
 
 response_status = b"""
 <?xml version="1.0" encoding="utf-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><soap:Body><nfeResultMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4"><retConsStatServ versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><tpAmb>2</tpAmb><verAplic>SVRS202305251555</verAplic><cStat>107</cStat><xMotivo>Servico em Operacao</xMotivo><cUF>42</cUF><dhRecbto>2023-06-11T00:15:00-03:00</dhRecbto><tMed>1</tMed></retConsStatServ></nfeResultMsg></soap:Body></soap:Envelope>"""
@@ -55,11 +57,6 @@ SERVER = "https://nfe-homologacao.svrs.rs.gov.br"  # TODO should be a parameter
 
 class SoapTest(TestCase):
     """
-    IMPORTANT: requires a very recent version of xsdata to run, Currently the code you
-    need is not published yet (will be published in version after 23.5).
-    So you need to install xsdata this way:
-    sudo python -m pip install git+https://github.com/tefra/xsdata.git@master#egg=xsdata
-
     Tests are mocked because the fisc server requires a valid A1 certificate.
     But for each test, you can also activate the non mocked version
     if you export the CERT_FILE and CERT_PASSWORD ENV variables before running the test:
@@ -69,7 +66,7 @@ class SoapTest(TestCase):
 
     To fix/adjust the _mocked tests, a way is to use a real A1 certificate and make the
     associated non mocked test fail (like by using assertEqual with a bad value)
-    while priting the response in the SoapClient send method. Then use it as the mocked
+    while priting the response in the NfeClient send method. Then use it as the mocked
     response.
     """
 
@@ -112,9 +109,9 @@ class SoapTest(TestCase):
         cls.nfe_xml = serializer.render(
             obj=cls.nfe, ns_map={None: "http://www.portalfiscal.inf.br/nfe"}
         )  # .replace('\n', '').replace('\r', '')
-        cls.client = NfeSoapClient.from_service(
+        cls.client = NfeClient(
             ambiente="2",
-            uf=cls.nfe.infNFe.ide.cUF.value,
+            uf="41",  # cls.nfe.infNFe.ide.cUF.value,
             pkcs12_data=cls.cert_data,
             pkcs12_password=cls.cert_password,
             fake_certificate=cls.fake_certificate,
@@ -124,28 +121,27 @@ class SoapTest(TestCase):
         )
 
     @only_if_valid_certificate
-    def FIXME_test_0_download_wsdl_files(self):
+    def test_0_download_wsdl_files(self):
         test_mode = True
         WSDLS = (
-            "/ws/nfeinutilizacao/nfeinutilizacao4.asmx",
-            "/ws/NfeConsulta/NfeConsulta4.asmx",
-            "/ws/NfeStatusServico/NfeStatusServico4.asmx",
-            "/ws/cadconsultacadastro/cadconsultacadastro4.asmx",
-            "/ws/recepcaoevento/recepcaoevento4.asmx",
-            "/ws/NfeAutorizacao/NFeAutorizacao4.asmx",
-            "/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx",
-            "https://www1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx",
+            # "/ws/nfeinutilizacao/nfeinutilizacao4.asmx",
+            # "/ws/NfeConsulta/NfeConsulta4.asmx",
+            # "/ws/NfeStatusServico/NfeStatusServico4.asmx",
+            # "/ws/cadconsultacadastro/cadconsultacadastro4.asmx",
+            # "/ws/recepcaoevento/recepcaoevento4.asmx",
+            # "/ws/NfeAutorizacao/NFeAutorizacao4.asmx",
+            # "/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx",
+            # "https://www1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx",
             # "https://mdfe.svrs.rs.gov.br/ws/MDFeRecepcao/MDFeRecepcao.asmx",
+            #            "https://cte.svrs.rs.gov.br/ws/CTeConsultaV4/CTeConsultaV4.asmx",
+            "https://mdfe-homologacao.svrs.rs.gov.br/ws/mdferetrecepcao/MDFeRetRecepcao.asmx",
         )
 
         session = Session()
-        # session.cert = (key, cert)
-        with open(environ["CERT_FILE"], "rb") as pkcs12_file:
-            pkcs12_data = pkcs12_file.read()
         session.mount(
             SERVER,
             Pkcs12Adapter(
-                pkcs12_data=pkcs12_data,
+                pkcs12_filename=environ["CERT_FILE"],
                 pkcs12_password=environ["CERT_PASSWORD"],
             ),
         )
@@ -156,7 +152,9 @@ class SoapTest(TestCase):
                 url = SERVER + url
             if not url.endswith("?wsdl"):
                 url += "?wsdl"
+            # breakpoint()
             response = session.get(url)
+            time.sleep(0.05)
             filename = (
                 url.split("/")[-1]
                 .replace("?wsdl", "")
@@ -165,10 +163,12 @@ class SoapTest(TestCase):
             )
             output = "/tmp/%s" % (filename,)
             if "mdfe" in url:  # TODO move to mdfe test suite
-                wsdl_file = nfelib.__path__[0] + "/mdfe/wsdl/" + filename
+                wsdl_file = os.path.join("nfelib_client", "mdfe", "wsdl", filename)
+            elif "cte" in url:  # TODO move to mdfe test suite
+                wsdl_file = os.path.join("nfelib_client", "cte", "wsdl", filename)
             else:
-                wsdl_file = nfelib.__path__[0] + "/nfe/wsdl/" + filename
-            if test_mode:
+                wsdl_file = os.path.join("nfelib_client", "nfe", "wsdl", filename)
+            if False:  # test_mode:
                 with open(output, "w") as file:
                     file.write(response.text)
                 print(
@@ -178,11 +178,11 @@ class SoapTest(TestCase):
                         filename,
                     ),
                 )
-                self.assertListEqual(
-                    list(io.open(output)),
-                    list(io.open(wsdl_file)),
-                    filename + " differs",
-                )
+                # self.assertListEqual(
+                #     list(io.open(output)),
+                #     list(io.open(wsdl_file)),
+                #     filename + " differs",
+                # )
             else:
                 with open(wsdl_file, "w") as file:
                     file.write(response.text)
@@ -190,7 +190,6 @@ class SoapTest(TestCase):
     @only_if_valid_certificate
     def test_0_status(self):
         res = self.client.status_servico()
-        # breakpoint()
         self.assertEqual(res.cStat, "107")
 
     @mock.patch.object(DefaultTransport, "post")
@@ -204,13 +203,11 @@ class SoapTest(TestCase):
         res = self.client.envia_documento([self.signed_nfe_xml])
         self.assertEqual(res.cStat, "103")
         print(res)
-        # breakpoint()
         import time
 
         time.sleep(int(res.infRec.tMed))
         res = self.client.consulta_recibo(numero=res.infRec.nRec)
         print(res)
-        # breakpoint()
         # res = self.client.consulta_documento(self.nfe.infNFe.Id[3:])
         # # we actually test the NFe is not found because it is the test environment
         # print(res)

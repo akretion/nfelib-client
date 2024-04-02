@@ -27,21 +27,33 @@ from nfelib.nfe_evento_cancel.bindings.v1_0.leiaute_evento_canc_nfe_v1_00 import
 )
 
 from nfelib_client.nfe.soap.nfeconsulta4 import NfeConsultaProtocolo4SoapNfeConsultaNf
-from nfelib_client.nfe.soap.nfeinutilizacao4 import NfeInutilizacao4SoapNfeInutilizacaoNf
-from nfelib_client.nfe.soap.nferetautorizacao4 import NfeRetAutorizacao4SoapNfeRetAutorizacaoLote
-from nfelib_client.nfe.soap.nfestatusservico4 import NfeStatusServico4SoapNfeStatusServicoNf
-from nfelib_client.nfe.soap.recepcaoevento4 import NfeRecepcaoEvento4SoapNfeRecepcaoEvento
+from nfelib_client.nfe.soap.nfeinutilizacao4 import (
+    NfeInutilizacao4SoapNfeInutilizacaoNf,
+)
+from nfelib_client.nfe.soap.nferetautorizacao4 import (
+    NfeRetAutorizacao4SoapNfeRetAutorizacaoLote,
+)
+from nfelib_client.nfe.soap.nfestatusservico4 import (
+    NfeStatusServico4SoapNfeStatusServicoNf,
+)
+from nfelib_client.nfe.soap.recepcaoevento4 import (
+    NfeRecepcaoEvento4SoapNfeRecepcaoEvento,
+)
 from nfelib_client.nfe.soap.nfeautorizacao4 import NfeAutorizacao4SoapNfeAutorizacaoLote
-# TODO nfedistribuicaodfe
+
+# TODO distribuição:
+from nfelib_client.nfe.soap.nfedistribuicaodfe import (
+    NfeDistribuicaoDfeSoapNfeDistDfeInteresse,
+)
 
 # NOTE about erpbrasil.edoc we emulate here: sometimes the erpbrasil.edoc API seems bad:
 # in general it forces coupling with the binding classes and coupling with the sign lib.
 # also takes 1 NFe, shouldn't it be a list??
 
 
-class NfeSoapClient(FiscalClient):
+class NfeClient(FiscalClient):
     """A façade for the NFe SOAP webserices.
-    The API is the same as the erpbrasil.edoc package.
+    The API is inspired from erpbrasil.edoc package for easy migration.
     """
 
     def __init__(self, **kw):
@@ -76,8 +88,7 @@ class NfeSoapClient(FiscalClient):
     # Webservices
     ######################################
 
-    # NOTE in wmixvideo
-    # consultaStatus(final DFUnidadeFederativa uf, final DFModelo modelo
+    # OK 100%
     def status_servico(self, xServ: str = "STATUS") -> RetConsStatServ:
         return self.send(
             NfeStatusServico4SoapNfeStatusServicoNf,
@@ -89,8 +100,7 @@ class NfeSoapClient(FiscalClient):
             ),
         )
 
-    # NOTE in wmixvideo
-    # consultaLote(final String numeroRecibo, final DFModelo modelo) for NFe and NFCe
+    # OK 100%
     def consulta_documento(self, chave: str, xServ: str = "CONSULTAR") -> RetConsSitNfe:
         return self.send(
             NfeConsultaProtocolo4SoapNfeConsultaNf,
@@ -102,13 +112,13 @@ class NfeSoapClient(FiscalClient):
             ),
         )
 
-    # NOTE: I changed the signature from erpbrasil.edoc
-    # shouldn't we have a list of signed_nfe??
-    # in wmixvideo enviaLote(final NFLoteEnvio lote, boolean validarXML) (not signed)
-    # and enviaLoteAssinado(final String loteAssinadoXml, final DFModelo modelo)
-    # NEW API OK. Change to envi_nfe? insiste list of NFe's/lote is supported
-    def envia_documento(self, nfes: list, id_lote=None, ind_sinc="0") -> RetEnviNfe:
+    # NOTE: I changed the signature from erpbrasil.edoc to support a list of NFe's
+    # OK 100%
+    def envia_documento(
+        self, lista_nfes: list, id_lote=None, ind_sinc="0"
+    ) -> RetEnviNfe:
         # TODO see if NFe's should be signed
+        # for nfe in nfe_list...
         return self.send(
             NfeAutorizacao4SoapNfeAutorizacaoLote,
             EnviNfe(
@@ -120,7 +130,7 @@ class NfeSoapClient(FiscalClient):
                 NFe=[Tnfe()],
             ),
             placeholder_exp="<NFe/>",
-            placeholder_content="".join(nfes),
+            placeholder_content="".join(lista_nfes),
         )
 
     # NOTE erpbrasil.edoc coupling with TinutNfe seems bad, better take signed xml?
@@ -128,12 +138,8 @@ class NfeSoapClient(FiscalClient):
     # and inutilizaNotaAssinada(final eventoAssinadoXml, modelo)
     def envia_inutilizacao(self, evento: InutNfe.InfInut) -> RetInutNfe:
         # NOTE: sure we don't take a signed xml input?
-        evento_xml = self.serializer.render(
-            evento, ns_map={None: "http://www.portalfiscal.inf.br/nfe"}
-        )
-        print("EEEEEEEEEEE", evento_xml)
         signed_xml = self._sign_xml(
-            evento_xml, evento.infInut.Id, self.pkcs12_data, self.pkcs12_password
+            evento.to_xml(), evento.infInut.Id, self.pkcs12_data, self.pkcs12_password
         )
         return self.send(
             NfeInutilizacao4SoapNfeInutilizacaoNf,
@@ -146,13 +152,15 @@ class NfeSoapClient(FiscalClient):
             placeholder_content=signed_xml,
         )
 
-    def consulta_recibo(self, numero: str = "", proc_envio=False) -> RetConsReciNfe:
+    # OK 100%
+    def consulta_recibo(
+        self, numero: str = "", proc_envio: RetEnviNfe = None
+    ) -> RetConsReciNfe:
         if proc_envio:
-            # FIXME: what is the proc_envio type with resposta inside? Seems broken
             numero = proc_envio.infRec.nRec
 
         if not numero:
-            raise RuntimeError("Sem numero para consultar!")
+            raise ValueError("Sem numero para consultar!")
 
         return self.send(
             NfeRetAutorizacao4SoapNfeRetAutorizacaoLote,
@@ -203,6 +211,7 @@ class NfeSoapClient(FiscalClient):
     # Binding façades
     ######################################
 
+    # OK 100%
     def cancela_documento(
         self,
         chave: str,
@@ -210,6 +219,10 @@ class NfeSoapClient(FiscalClient):
         justificativa: str,
         data_hora_evento=False,
     ):
+        """
+        Binding details in:
+        nfelib/nfe_evento_cancel/bindings/v1_0/leiaute_evento_canc_nfe_v1_00.py
+        """
         tipo_evento = "110111"
         sequencia = "1"
         return TeventoCancel.InfEvento(
@@ -217,6 +230,7 @@ class NfeSoapClient(FiscalClient):
             cOrgao=self.uf,
             tpAmb=self.ambiente,
             CNPJ=chave[6:20],
+            # CPF TODO
             chNFe=chave,
             dhEvento=data_hora_evento or self._timestamp(),
             tpEvento="110111",
@@ -230,17 +244,20 @@ class NfeSoapClient(FiscalClient):
             ),
         )
 
-    # in wmixvideo corrigeNota(String chaveDeAcesso, String textoCorrecao, int numeroSequencialEvento)
-    # and corrigeNotaAssinada(chave, eventoAssinadoXml)
+    # OK 100%
     def carta_correcao(
         self, chave: str, sequencia: str, justificativa: str, data_hora_evento: str = ""
     ):
+        """
+        Binding details:
+        nfelib/nfe_evento_cancel/bindings/v1_0/leiaute_evento_canc_nfe_v1_00.py
+        """
         return TeventoCCe.InfEvento(
             Id="ID" + tipo_evento + chave + sequencia.zfill(2),
             cOrgao=self.uf,
             tpAmb=self.ambiente,
             CNPJ=chave[6:20],
-            CPF=None,
+            CPF=None,  # TODO
             chNFe=chave,
             dhEvento=data_hora_evento or self._timestamp(),
             tpEvento=tipo_evento,
@@ -254,6 +271,7 @@ class NfeSoapClient(FiscalClient):
             ),
         )
 
+    # OK 100%
     def inutilizacao(
         self,
         cnpj: str,
@@ -263,6 +281,10 @@ class NfeSoapClient(FiscalClient):
         num_fin: str,
         justificativa: str,
     ) -> TinutNfe:
+        """
+        Binding details in:
+        nfelib/nfe/bindings/v4_0/leiaute_inut_nfe_v4_00.py
+        """
         year = str(date.today().year)[2:]
         return InutNfe(
             infInut=InutNfe.InfInut(
@@ -302,7 +324,10 @@ class NfeSoapClient(FiscalClient):
     def consultar_distribuicao(
         self, cnpj_cpf, ultimo_nsu=False, nsu_especifico=False, chave=False
     ):
-        pass
+        return self.send(
+            NfeDistribuicaoDfeSoapNfeDistDfeInteresse,
+            # TODO
+        )
 
     #    def monta_processo(self, edoc, proc_envio, proc_recibo):
     #        nfe = proc_envio.envio_raiz.find('{' + self._namespace + '}NFe')
