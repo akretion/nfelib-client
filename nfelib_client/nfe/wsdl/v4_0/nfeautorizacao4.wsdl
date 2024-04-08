@@ -103,10 +103,10 @@
   </wsdl:binding>
   <wsdl:service name="NFeAutorizacao4">
     <wsdl:port name="NFeAutorizacao4Soap" binding="tns:NFeAutorizacao4Soap">
-      <soap:address location="https://nfe-homologacao.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx" />
+      <soap:address location="https://nfe.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx" />
     </wsdl:port>
     <wsdl:port name="NFeAutorizacao4Soap12" binding="tns:NFeAutorizacao4Soap12">
-      <soap12:address location="https://nfe-homologacao.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx" />
+      <soap12:address location="https://nfe.svrs.rs.gov.br/ws/NfeAutorizacao/NFeAutorizacao4.asmx" />
     </wsdl:port>
   </wsdl:service>
 </wsdl:definitions>

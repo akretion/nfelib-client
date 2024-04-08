@@ -56,10 +56,10 @@
   </wsdl:binding>
   <wsdl:service name="NFeConsultaProtocolo4">
     <wsdl:port name="NFeConsultaProtocolo4Soap" binding="tns:NFeConsultaProtocolo4Soap">
-      <soap:address location="https://nfe-homologacao.svrs.rs.gov.br/ws/NfeConsulta/NfeConsulta4.asmx" />
+      <soap:address location="https://nfe.svrs.rs.gov.br/ws/NfeConsulta/NfeConsulta4.asmx" />
     </wsdl:port>
     <wsdl:port name="NFeConsultaProtocolo4Soap12" binding="tns:NFeConsultaProtocolo4Soap12">
-      <soap12:address location="https://nfe-homologacao.svrs.rs.gov.br/ws/NfeConsulta/NfeConsulta4.asmx" />
+      <soap12:address location="https://nfe.svrs.rs.gov.br/ws/NfeConsulta/NfeConsulta4.asmx" />
     </wsdl:port>
   </wsdl:service>
 </wsdl:definitions>

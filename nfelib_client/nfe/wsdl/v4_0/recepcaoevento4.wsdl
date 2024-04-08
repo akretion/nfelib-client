@@ -56,10 +56,10 @@
   </wsdl:binding>
   <wsdl:service name="NFeRecepcaoEvento4">
     <wsdl:port name="NFeRecepcaoEvento4Soap" binding="tns:NFeRecepcaoEvento4Soap">
-      <soap:address location="https://nfe-homologacao.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx" />
+      <soap:address location="https://nfe.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx" />
     </wsdl:port>
     <wsdl:port name="NFeRecepcaoEvento4Soap12" binding="tns:NFeRecepcaoEvento4Soap12">
-      <soap12:address location="https://nfe-homologacao.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx" />
+      <soap12:address location="https://nfe.svrs.rs.gov.br/ws/recepcaoevento/recepcaoevento4.asmx" />
     </wsdl:port>
   </wsdl:service>
 </wsdl:definitions>

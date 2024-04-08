@@ -56,10 +56,10 @@
   </wsdl:binding>
   <wsdl:service name="NFeInutilizacao4">
     <wsdl:port name="NFeInutilizacao4Soap" binding="tns:NFeInutilizacao4Soap">
-      <soap:address location="https://nfe-homologacao.svrs.rs.gov.br/ws/nfeinutilizacao/nfeinutilizacao4.asmx" />
+      <soap:address location="https://nfe.svrs.rs.gov.br/ws/nfeinutilizacao/nfeinutilizacao4.asmx" />
     </wsdl:port>
     <wsdl:port name="NFeInutilizacao4Soap12" binding="tns:NFeInutilizacao4Soap12">
-      <soap12:address location="https://nfe-homologacao.svrs.rs.gov.br/ws/nfeinutilizacao/nfeinutilizacao4.asmx" />
+      <soap12:address location="https://nfe.svrs.rs.gov.br/ws/nfeinutilizacao/nfeinutilizacao4.asmx" />
     </wsdl:port>
   </wsdl:service>
 </wsdl:definitions>

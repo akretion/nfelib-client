@@ -56,10 +56,10 @@
   </wsdl:binding>
   <wsdl:service name="NFeStatusServico4">
     <wsdl:port name="NFeStatusServico4Soap" binding="tns:NFeStatusServico4Soap">
-      <soap:address location="https://nfe-homologacao.svrs.rs.gov.br/ws/NfeStatusServico/NfeStatusServico4.asmx" />
+      <soap:address location="https://nfe.svrs.rs.gov.br/ws/NfeStatusServico/NfeStatusServico4.asmx" />
     </wsdl:port>
     <wsdl:port name="NFeStatusServico4Soap12" binding="tns:NFeStatusServico4Soap12">
-      <soap12:address location="https://nfe-homologacao.svrs.rs.gov.br/ws/NfeStatusServico/NfeStatusServico4.asmx" />
+      <soap12:address location="https://nfe.svrs.rs.gov.br/ws/NfeStatusServico/NfeStatusServico4.asmx" />
     </wsdl:port>
   </wsdl:service>
 </wsdl:definitions>
