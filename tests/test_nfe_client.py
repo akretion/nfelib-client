@@ -6,11 +6,9 @@ from os import environ
 from pathlib import Path
 from unittest import TestCase, mock
 
-import nfelib
 from decorator import decorate
 from erpbrasil.assinatura import certificado as cert
 from erpbrasil.assinatura import misc
-from lxml import etree
 from nfelib.nfe.bindings.v4_0.nfe_v4_00 import Nfe
 from nfelib.nfe.bindings.v4_0.proc_nfe_v4_00 import TnfeProc
 from requests import Session
@@ -19,7 +17,7 @@ from xsdata.formats.dataclass.parsers import XmlParser
 from xsdata.formats.dataclass.serializers import XmlSerializer
 from xsdata.formats.dataclass.transports import DefaultTransport
 
-from nfelib_client.nfe.soap_client import NfeClient
+from nfelib_client.nfe.client.v4_0 import NfeClient
 
 response_status = b"""
 <?xml version="1.0" encoding="utf-8"?><soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema"><soap:Body><nfeResultMsg xmlns="http://www.portalfiscal.inf.br/nfe/wsdl/NFeStatusServico4"><retConsStatServ versao="4.00" xmlns="http://www.portalfiscal.inf.br/nfe"><tpAmb>2</tpAmb><verAplic>SVRS202305251555</verAplic><cStat>107</cStat><xMotivo>Servico em Operacao</xMotivo><cUF>42</cUF><dhRecbto>2023-06-11T00:15:00-03:00</dhRecbto><tMed>1</tMed></retConsStatServ></nfeResultMsg></soap:Body></soap:Envelope>"""
@@ -42,10 +40,9 @@ _logger = logging.getLogger(__name__)
 def _only_if_valid_certificate(method, self):
     if self.valid_certificate:
         return method(self)
-    else:
-        return lambda: _logger.info(
-            "Skipping test today because you didn't provide a valid A1 certificate"
-        )
+    return lambda: _logger.info(
+        "Skipping test because you didn't provide a valid A1 certificate"
+    )
 
 
 def only_if_valid_certificate(method):
@@ -116,76 +113,7 @@ class SoapTest(TestCase):
             pkcs12_password=cls.cert_password,
             fake_certificate=cls.fake_certificate,
         )
-        cls.signed_nfe_xml = cls.client._sign_xml(
-            cls.nfe_xml, cls.nfe.infNFe.Id, cls.cert_data, cls.cert_password
-        )
-
-    @only_if_valid_certificate
-    def test_0_download_wsdl_files(self):
-        test_mode = True
-        WSDLS = (
-            # "/ws/nfeinutilizacao/nfeinutilizacao4.asmx",
-            # "/ws/NfeConsulta/NfeConsulta4.asmx",
-            # "/ws/NfeStatusServico/NfeStatusServico4.asmx",
-            # "/ws/cadconsultacadastro/cadconsultacadastro4.asmx",
-            # "/ws/recepcaoevento/recepcaoevento4.asmx",
-            # "/ws/NfeAutorizacao/NFeAutorizacao4.asmx",
-            # "/ws/NfeRetAutorizacao/NFeRetAutorizacao4.asmx",
-            # "https://www1.nfe.fazenda.gov.br/NFeDistribuicaoDFe/NFeDistribuicaoDFe.asmx",
-            # "https://mdfe.svrs.rs.gov.br/ws/MDFeRecepcao/MDFeRecepcao.asmx",
-            #            "https://cte.svrs.rs.gov.br/ws/CTeConsultaV4/CTeConsultaV4.asmx",
-            "https://mdfe-homologacao.svrs.rs.gov.br/ws/mdferetrecepcao/MDFeRetRecepcao.asmx",
-        )
-
-        session = Session()
-        session.mount(
-            SERVER,
-            Pkcs12Adapter(
-                pkcs12_filename=environ["CERT_FILE"],
-                pkcs12_password=environ["CERT_PASSWORD"],
-            ),
-        )
-
-        session.verify = False
-        for url in WSDLS:
-            if not url.startswith("http"):
-                url = SERVER + url
-            if not url.endswith("?wsdl"):
-                url += "?wsdl"
-            # breakpoint()
-            response = session.get(url)
-            time.sleep(0.05)
-            filename = (
-                url.split("/")[-1]
-                .replace("?wsdl", "")
-                .replace(".asmx", ".wsdl")
-                .lower()
-            )
-            output = "/tmp/%s" % (filename,)
-            if "mdfe" in url:  # TODO move to mdfe test suite
-                wsdl_file = os.path.join("nfelib_client", "mdfe", "wsdl", filename)
-            elif "cte" in url:  # TODO move to mdfe test suite
-                wsdl_file = os.path.join("nfelib_client", "cte", "wsdl", filename)
-            else:
-                wsdl_file = os.path.join("nfelib_client", "nfe", "wsdl", filename)
-            if False:  # test_mode:
-                with open(output, "w") as file:
-                    file.write(response.text)
-                print(
-                    "downloaded %s in %s",
-                    (
-                        url,
-                        filename,
-                    ),
-                )
-                # self.assertListEqual(
-                #     list(io.open(output)),
-                #     list(io.open(wsdl_file)),
-                #     filename + " differs",
-                # )
-            else:
-                with open(wsdl_file, "w") as file:
-                    file.write(response.text)
+        cls.signed_nfe_xml = cls.nfe.to_xml(pkcs12_data=cls.cert_data, pkcs12_password=cls.cert_password, doc_id=cls.nfe.infNFe.Id)
 
     @only_if_valid_certificate
     def test_0_status(self):
