@@ -132,7 +132,7 @@ class NfeClient(FiscalClient):
         else:
             server = server_data["dev_server"]
         path = server_data[action_key]
-        return "https://" + server + path
+        return "https://" + server + path, action_key
 
     def send(
         self,
@@ -157,7 +157,9 @@ class NfeClient(FiscalClient):
         Returns:
             The response model instance.
         """
-        location = self._get_location(action_class)
+        message = {"input_object": obj}
+        self.messages.append(message)
+        location, action_key = self._get_location(action_class)
         wrapped_obj = {"Body": {"nfeDadosMsg": {"content": [obj]}}}
         response = super().send(
             action_class,
@@ -165,9 +167,13 @@ class NfeClient(FiscalClient):
             wrapped_obj,
             placeholder_exp=placeholder_exp,
             placeholder_content=placeholder_content,
+            subclass_message=message,
             **kwargs,
         )
-        return response.body.nfeResultMsg.content[0]
+        message["action"] = action_key
+        res = response.body.nfeResultMsg.content[0]
+        message["output_object"] = res
+        return res
 
     ######################################
     # Webservices
